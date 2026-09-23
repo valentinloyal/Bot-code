@@ -1,0 +1,16 @@
+{
+  "name": "codename-arena-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord qui soumet les prompts d'attaque du salon commun a l'agent Ollama local de son proprietaire.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
