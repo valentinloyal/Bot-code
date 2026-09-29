@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -81,9 +81,18 @@ async function buildModel() {
   const file = join(dir, "Modelfile");
   try {
     writeFileSync(file, filled);
+    // mkdtemp cree le dossier en 0700 (proprietaire seul). Si le service ollama
+    // tourne sous un autre utilisateur systeme, il ne pourrait pas lire le
+    // fichier : on l'ouvre en lecture pour tout le monde sur cette machine.
+    chmodSync(dir, 0o755);
+    chmodSync(file, 0o644);
     await run("ollama", ["create", MODEL_NAME, "-f", file]);
-  } finally {
     rmSync(dir, { recursive: true, force: true });
+  } catch (err) {
+    // On garde le dossier en cas d'echec pour pouvoir l'inspecter et reproduire
+    // la commande a la main, hors de ce script.
+    err.message += `\nFichier conserve pour inspection : ${file}\nReproduis avec : ollama create ${MODEL_NAME} -f ${file}`;
+    throw err;
   }
 }
 
