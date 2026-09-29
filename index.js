@@ -86,7 +86,10 @@ async function buildModel() {
     // fichier : on l'ouvre en lecture pour tout le monde sur cette machine.
     chmodSync(dir, 0o755);
     chmodSync(file, 0o644);
-    await run("ollama", ["create", MODEL_NAME, "-f", file]);
+    // Certaines versions d'ollama resolvent mal un chemin absolu hors du
+    // repertoire courant pour -f : on se place dans le dossier temporaire et
+    // on passe un nom de fichier relatif, comme dans la doc officielle.
+    await run("ollama", ["create", MODEL_NAME, "-f", "Modelfile"], { cwd: dir });
     rmSync(dir, { recursive: true, force: true });
   } catch (err) {
     // On garde le dossier en cas d'echec pour pouvoir l'inspecter et reproduire
