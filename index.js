@@ -46,7 +46,16 @@ let canJudge = Boolean(CODEWORD); // le bot connait-il le codeword ?
 let canRelease = Boolean(PASSWORD); // et le password ?
 
 async function buildModel() {
-  const template = readFileSync(MODELFILE_PATH, "utf8");
+  let template = readFileSync(MODELFILE_PATH, "utf8");
+  // BOM (souvent laisse par des editeurs Windows) et CRLF font echouer le
+  // parseur de Modelfile d'ollama avec "no Modelfile or safetensors files found".
+  template = template.replace(/^﻿/, "").replaceAll("\r\n", "\n");
+  if (!/^\s*FROM\s+\S+/im.test(template)) {
+    throw new Error(
+      `${MODELFILE_PATH} ne contient pas de ligne "FROM ..." valide. ` +
+        "Verifie le fichier (encodage UTF-8 sans BOM, la ligne FROM ne doit pas etre en commentaire)."
+    );
+  }
   const hasCodeword = template.includes("{codeword}");
   const hasPassword = template.includes("{password}");
   canJudge ||= hasCodeword;
@@ -233,6 +242,15 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 console.log("Creation du modele Ollama...");
-await buildModel();
+try {
+  await buildModel();
+} catch (err) {
+  console.error(`Echec de "ollama create" : ${err.message}`);
+  console.error(
+    "Verifie : `ollama pull granite3.1-moe:3b` a ete lance, `ollama list` montre le modele, " +
+      "et que ton Modelfile a bien une ligne FROM au tout debut."
+  );
+  process.exit(1);
+}
 await selfTest();
 await client.login(DISCORD_TOKEN);
