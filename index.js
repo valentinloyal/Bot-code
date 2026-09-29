@@ -50,10 +50,23 @@ async function buildModel() {
   // BOM (souvent laisse par des editeurs Windows) et CRLF font echouer le
   // parseur de Modelfile d'ollama avec "no Modelfile or safetensors files found".
   template = template.replace(/^﻿/, "").replaceAll("\r\n", "\n");
-  if (!/^\s*FROM\s+\S+/im.test(template)) {
+  const fromMatch = template.match(/^\s*FROM\s+(\S+)/im);
+  if (!fromMatch) {
     throw new Error(
       `${MODELFILE_PATH} ne contient pas de ligne "FROM ..." valide. ` +
         "Verifie le fichier (encodage UTF-8 sans BOM, la ligne FROM ne doit pas etre en commentaire)."
+    );
+  }
+  const REQUIRED_BASE = "granite3.1-moe:3b";
+  if (fromMatch[1] !== REQUIRED_BASE) {
+    // Le plus souvent : caractere invisible ou tiret/espace "typographique" colle
+    // depuis un PDF/Word (copier-coller du sujet), invisible a l'oeil mais different
+    // pour ollama qui ne trouve alors aucun modele portant ce nom exact.
+    const hex = (s) => Buffer.from(s, "utf8").toString("hex");
+    throw new Error(
+      `La ligne FROM doit etre exactement "FROM ${REQUIRED_BASE}". ` +
+        `Trouve : ${JSON.stringify(fromMatch[1])} (hex: ${hex(fromMatch[1])}) au lieu de ${JSON.stringify(REQUIRED_BASE)} (hex: ${hex(REQUIRED_BASE)}). ` +
+        "Retape la ligne a la main (ne colle pas depuis un PDF/Word : les tirets et espaces peuvent differer)."
     );
   }
   const hasCodeword = template.includes("{codeword}");
